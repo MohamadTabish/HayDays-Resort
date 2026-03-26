@@ -1,2 +1,5 @@
 [phases.setup]
 nixPkgs = ["python3", "pkg-config", "gcc"]
+
+[variables]
+NODE_VERSION = "20"
