@@ -686,8 +686,8 @@ const path = require('path');
 if (process.env.NODE_ENV === 'production') {
     // Serve the built React app from frontend/dist
     app.use(express.static(path.join(__dirname, '../frontend/dist')));
-    // Any route not matched by API returns the React app
-    app.get('*', (req, res) => {
+    // Catch-all: return React app for any unmatched route (client-side routing)
+    app.use((req, res) => {
         res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
     });
 }
