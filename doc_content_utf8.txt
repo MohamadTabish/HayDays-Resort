@@ -1,0 +1,934 @@
+HAYDAYS RESORT
+Digital Management System
+────────────────────────────────
+PRODUCT SPECIFICATION DOCUMENT
+Demo Version 1.0
+Prepared for: AntiGravity Development Team
+March 2026
+1. Document Purpose & Scope
+This document is the complete product specification for the Haydays Resort Digital Management System — Demo Version 1.0. It is written for the AntiGravity development team and serves as the single source of truth for what to build, how each feature should behave, what the demo must demonstrate, and how to handle integration constraints.
+Every section follows the same structure: what the feature is, what it must do, how it should behave in the demo, and any technical notes the developer needs to be aware of.
+What this document covers
+▸ 
+Full module specifications for all resort operations
+▸ 
+Detailed pool maintenance system with pump scheduling, strainer checks and vacuuming rules
+▸ 
+WhatsApp notification architecture and a simulation fallback for demo purposes
+▸ 
+Time tracking specification for all maintenance activities
+▸ 
+Demo scope boundaries — what is live, what is simulated, and what is stubbed
+▸ 
+Data model overview and suggested tech stack
+2. Demo Version — What Is In and Out of Scope
+The demo version is a fully functional prototype that demonstrates all major workflows end to end. It uses realistic dummy data, simulated time, and an in-app notification system in place of live WhatsApp API integration. The purpose is to show the client exactly how the system will look and behave in production.
+Feature Area
+Demo Status
+Notes for Developer
+Booking & reservation management
+Live — full CRUD
+Use seed data with 5 sample bookings across Direct, OTA, Corporate
+Reception check-in / check-out
+Live — full flow
+Trigger housekeeping task automatically on checkout
+Housekeeping task management
+Live — full flow
+5 rooms, 3 staff, live task assignment and status updates
+Kitchen & dining orders
+Live — basic flow
+Simple order → kitchen dashboard → mark ready
+Inventory management
+Live — with alerts
+Pre-seed inventory with 3 items below threshold to show alerts
+Maintenance ticketing
+Live — full flow
+Include reassignment and escalation demo paths
+Pool maintenance system
+Live — full flow
+All pump/strainer/vacuum rules active, threshold alerts firing
+Gardening & pet care
+Stubbed — UI only
+Show module cards, no backend logic required for demo
+WhatsApp notifications
+Simulated — in-app
+Full simulation panel inside the app — see Section 8
+Staff mobile view
+Live — responsive web
+Same app, mobile-optimised layout for staff screens
+Manager dashboard & reports
+Live — auto-generated
+Pull from seed data, show daily summary report
+Analytics & AI features
+Out of scope
+Not included in demo — listed as Phase 3 roadmap only
+⚠  
+The WhatsApp API requires business verification and approval from Meta, which takes 2–4 weeks. For the demo, build a full in-app simulation that mimics WhatsApp behaviour exactly. The simulation must be indistinguishable from the real thing in terms of user experience. See Section 8 for the complete simulation specification.
+3. System Architecture Overview
+The system is a multi-role web application. Different users see different interfaces depending on their role. All roles connect to the same backend database and real-time update engine.
+Role
+What They See
+Access Level
+Operations Manager
+Full dashboard — all modules, all staff, all reports
+Admin — read/write all
+Accountant
+Booking module, billing, financial reports
+Read/write — finance only
+Housekeeping Staff
+Their assigned tasks for the day, mark complete
+Read own tasks, write status
+Chef
+Kitchen orders, inventory, their tasks
+Read/write — kitchen + inventory
+Guest Service Staff
+Maintenance tickets, pool logs, garden tasks
+Read/write — assigned modules
+Pool Staff
+Pool module only — logs, readings, tickets
+Read/write — pool only
+3.1  Suggested Tech Stack
+The following stack is recommended for the demo. AntiGravity may substitute equivalents where appropriate, provided the core behaviour matches this specification.
+Layer
+Recommended
+Purpose
+Frontend
+React.js with Tailwind CSS
+Responsive UI for all roles, mobile-first for staff
+Backend
+Node.js with Express
+REST API, business logic, scheduled jobs
+Database
+PostgreSQL
+All structured data — tickets, readings, bookings, inventory
+Real-time updates
+Socket.IO
+Live dashboard updates without page refresh
+Scheduled jobs
+node-cron
+Pool check reminders, escalation timers, daily reports
+Notification simulation
+In-app panel (see Section 8)
+WhatsApp simulation — no external API in demo
+Authentication
+JWT with role-based middleware
+Different views per role
+Seed data
+SQL seed scripts
+Pre-populated realistic data for demo walkthrough
+4. Pool Maintenance System — Full Specification
+This is the most structured module in the system and requires the most precise implementation. Every rule below is a hard operational requirement, not a suggestion. The pool module must enforce these rules automatically — staff cannot skip or bypass them.
+4.1  Daily Pool Schedule — Fixed Rules
+The following three rules are non-negotiable operational requirements and must be enforced by the system every single day:
+R1
+Pool Pump / Motor — Minimum 3 Hours Daily Runtime
+The pool pump must run for a minimum of 3 continuous or accumulated hours every day. The system must track pump runtime automatically and alert staff if the daily minimum has not been reached by 6 PM.
+System behaviour: 
+Staff log pump ON and pump OFF times. System calculates runtime. If runtime < 3 hours by 18:00, an alert fires and a task is created to run the pump.
+R2
+Strainer Check — Mandatory Before Every Pump Start
+The strainer basket must be cleaned and checked before the pump is switched on each time. Additionally, the strainer must be checked at regular intervals while the pump is running.
+System behaviour: 
+Staff cannot log pump ON until they have first submitted a strainer check entry. The pump start log form shows: Strainer cleaned? [Yes/No] — if No is selected, the form cannot be submitted and a warning is shown.
+R3
+Pool Bottom Vacuuming — Every 2 Days
+The pool floor must be vacuumed once every two days. The system tracks the last vacuum date and automatically creates a vacuuming task on the correct days.
+System behaviour: 
+After each vacuum log is submitted, the system sets the next due date to +2 days. On that date, a task is auto-created at 7 AM and assigned to pool staff. If not completed by noon, it escalates to the manager.
+4.2  Daily Inspection Schedule & Time Tracking
+All pool tasks are time-tracked. Every log entry records who performed it, when it started, when it ended, and the duration. This data feeds the manager's daily report and the pool compliance log.
+Task
+Time Slot
+Frequency
+Time Tracked
+Prerequisite
+Auto-Task?
+Strainer clean & check
+Before pump start
+Every pump start
+Yes — duration logged
+None
+No — staff-initiated
+Pump ON log
+Morning, before 9 AM
+Daily
+Yes — ON timestamp
+Strainer check submitted
+Yes — reminder at 7 AM
+Pump runtime monitor
+Continuous
+Daily
+Yes — running total
+Pump ON logged
+System calculated
+Mid-day strainer check
+12:30 – 1:00 PM
+Daily (while pump running)
+Yes — duration logged
+Pump must be ON
+Yes — reminder at 12:30 PM
+Pump OFF log
+Evening, by 6 PM
+Daily
+Yes — OFF timestamp
+Pump ON logged
+Reminder if not logged by 5:30 PM
+Morning readings
+7:00 – 7:30 AM
+Daily
+Yes — entry timestamp
+None
+Yes — auto-task 7 AM
+Afternoon readings
+1:00 – 1:30 PM
+Daily
+Yes — entry timestamp
+None
+Yes — auto-task 1 PM
+Evening readings
+6:00 – 6:30 PM
+Daily
+Yes — entry timestamp
+None
+Yes — auto-task 6 PM
+Pool bottom vacuuming
+Morning, before 12 PM
+Every 2 days
+Yes — start + end time
+None
+Yes — auto-task on due date
+Full equipment check
+Morning
+Weekly (Monday)
+Yes — duration logged
+None
+Yes — auto-task Monday 8 AM
+Chemical treatment
+As needed
+On alert or routine
+Yes — duration + quantity
+Reading logged
+Yes — on threshold breach
+4.3  Pool Parameters — Thresholds & Automated Alerts
+Parameter
+Safe Range
+Warning Threshold
+Critical Threshold
+Action on Breach
+pH level
+7.2 – 7.8
+7.1 or 7.9
+Below 7.0 or above 8.0
+Task created · WA alert · Manager notified
+Free chlorine
+1.0 – 3.0 ppm
+0.9 or 3.5 ppm
+Below 0.8 or above 4.0 ppm
+Chemical treatment task auto-created
+Water temperature
+26 – 32°C
+33°C or 25°C
+Above 35°C or below 23°C
+Equipment check task + manager alert
+Turbidity / clarity
+Clear (NTU < 1)
+Slightly cloudy (NTU 1–2)
+Visibly cloudy (NTU > 3)
+Pool closure recommended + urgent task
+Water level
+Normal operating mark
+5% below normal
+10% below or any overflow
+Maintenance ticket auto-raised
+Pump runtime
+≥ 3 hours/day
+< 3 hrs by 5 PM
+Not run at all by 6 PM
+Alert + manual pump-on task created
+4.4  Pool Time Tracking — Data to Capture Per Session
+For every pool task performed, the following data must be stored. This is the minimum required to generate the compliance log and the manager's daily report.
+Field
+Type
+Required
+Notes
+Task type
+Dropdown selection
+Yes
+Pump start/stop · Strainer · Vacuum · Reading · Chemical · Equipment check
+Staff name
+Auto-filled from login
+Yes
+System pulls from logged-in user — staff cannot change this
+Start time
+Auto-timestamp on form open
+Yes
+System stamps when form is opened, not when submitted
+End time / submission time
+Auto-timestamp on submit
+Yes
+Duration = end time minus start time
+Duration (calculated)
+System calculated
+Yes
+Displayed to staff after submission for confirmation
+Readings (if applicable)
+Numeric input per parameter
+Yes for readings
+pH, chlorine, temp, turbidity, water level
+Strainer condition
+Clean / Partially blocked / Blocked
+Yes for strainer tasks
+If Blocked, a maintenance ticket is auto-raised
+Photo attachment
+Image upload
+Required for vacuum, equipment check
+Optional for routine readings
+Notes / observations
+Free text
+Optional
+Staff can add any observations for the manager
+Chemical used (if applicable)
+Type + quantity
+Yes for chemical tasks
+Dropdown for chemical type, numeric for quantity in grams/ml
+5. Module Specifications
+Each module below is specified for demo implementation. The card format shows: scope, features to build, module owner, and what the demo must specifically demonstrate.
+M01  
+Booking & Reservation Management
+Scope: 
+Manage all incoming reservations from Direct, OTA (Airbnb/Agoda/MakeMyTrip), and Corporate channels in a single interface.
+• 
+Unified booking calendar — month and week view
+• 
+Manual booking entry for direct reservations
+• 
+Booking source tag (Direct / OTA / Corporate) on every record
+• 
+Guest profile with stay history and repeat guest flag
+• 
+Automatic room availability check on booking creation
+• 
+Booking status workflow: Enquiry → Confirmed → Checked In → Checked Out
+• 
+On checkout: auto-trigger a housekeeping task for that room
+Owner: 
+Operations Manager, Accountant
+Demo: 
+Seed 5 bookings across all source types. Demonstrate checkout triggering a housekeeping task automatically.
+M02  
+Reception & Guest Handling
+Scope: 
+Digital check-in, check-out, billing, and guest communication tracking.
+• 
+Check-in form: guest name, ID, room assigned, expected checkout date
+• 
+Check-out form: generate bill summary, mark room for housekeeping
+• 
+Guest request log: any guest request is logged and assigned as a task
+• 
+VIP flag on guest profile: triggers manager notification on check-in
+• 
+Billing summary: room charges + service charges + any extras
+Owner: 
+Operations Manager, Accountant
+Demo: 
+Demo a full check-in → stay → check-out flow. Show VIP flag triggering a manager alert.
+M03  
+Housekeeping & Laundry
+Scope: 
+Task allocation and tracking for all 5 accommodation units, common areas, and laundry.
+• 
+Room status board: Occupied / Checkout / Being cleaned / Ready / Inspected
+• 
+Daily task auto-generation based on checkout bookings
+• 
+Manual task creation for special cleans or spot tasks
+• 
+Task assignment to specific housekeeping staff
+• 
+Staff marks task In Progress and Complete — with timestamps
+• 
+Laundry log: item type, quantity, sent date, returned date
+• 
+Inspection sign-off by manager before room marked Ready
+Owner: 
+Housekeeping staff, Operations Manager
+Demo: 
+Demo a checkout triggering a clean task, staff completing it, manager inspecting and approving.
+M04  
+Kitchen & Dining
+Scope: 
+Guest food order management and kitchen workflow dashboard.
+• 
+Guest places order → appears on kitchen dashboard instantly
+• 
+Kitchen staff marks: Received → Preparing → Ready → Served
+• 
+Order history per guest per stay
+• 
+Kitchen inventory deduction on order completion (if inventory module is active)
+• 
+Special dietary notes per order
+Owner: 
+Chef, Guest Service Staff
+Demo: 
+Demo end-to-end order from guest request to served status on kitchen dashboard.
+M05  
+Inventory Management
+Scope: 
+Stock tracking across Kitchen, Housekeeping, and Pool departments with low-stock alerts.
+• 
+Item catalogue: name, category, unit, minimum threshold, current stock
+• 
+Stock deduction: manual or triggered by task/order completion
+• 
+Low-stock alert: in-app notification + simulated WA alert when item hits threshold
+• 
+Purchase request: staff raises request, manager approves before order placed
+• 
+Vendor log: supplier name, item, last order date, price
+• 
+Monthly consumption report per category
+Owner: 
+Chef, Housekeeping lead, Operations Manager
+Demo: 
+Pre-seed 3 items below threshold so alerts fire immediately in demo.
+M06  
+Maintenance & Facilities
+Scope: 
+Issue logging, assignment, tracking, and resolution across all resort facilities.
+• 
+Any staff member can raise a maintenance ticket from any screen
+• 
+Ticket fields: issue title, location, category, severity, photo, description
+• 
+Auto-assignment based on staff role and availability
+• 
+Status flow: Open → Assigned → In Progress → Pending Parts → Resolved → Closed
+• 
+Manager approval required before ticket is closed
+• 
+Recurring issue detection: same location + category 3× in 30 days = flag
+• 
+Full audit trail: every status change timestamped and attributed
+Owner: 
+Guest Service Staff, Operations Manager
+Demo: 
+Demo a ticket raised → auto-assigned → completed → manager closes. Also show the rejection/reassignment path.
+M07  
+Swimming Pool — Full System
+Scope: 
+Complete pool maintenance tracking including pump scheduling, strainer protocol, vacuuming schedule, chemical monitoring, and compliance reporting.
+• 
+Daily pump ON/OFF log with runtime calculation and 3-hour minimum enforcement
+• 
+Strainer check form — mandatory gate before pump ON log can be submitted
+• 
+Mid-day strainer check task auto-created while pump is running
+• 
+Pool bottom vacuuming tracker — auto-task every 2 days
+• 
+Three-times-daily readings: morning, afternoon, evening
+• 
+Parameter threshold monitoring with warning and critical levels
+• 
+Chemical treatment log with type, quantity, and staff name
+• 
+Weekly equipment inspection checklist
+• 
+Pool compliance report: exportable daily/weekly/monthly log
+• 
+Pool status indicator on manager dashboard: Green / Amber / Red
+Owner: 
+Pool Staff, Guest Service Staff, Operations Manager
+Demo: 
+This is a priority demo module. Show: pump log with strainer gate, a reading that breaches threshold, the auto-alert firing, the resulting task being assigned and completed, and the compliance report.
+M08  
+Gardening & Outdoor
+Scope: 
+Scheduling and tracking of all outdoor maintenance tasks.
+• 
+Weekly gardening schedule with task types: mowing, trimming, watering, fertilising
+• 
+Task assignment to relevant staff
+• 
+Completion log with photo and notes
+• 
+Seasonal task planning calendar (stub for demo — UI only)
+Owner: 
+Chef, Guest Service Staff (shared)
+Demo: 
+Show the task schedule and one completion flow. No backend logic required for advanced features in demo.
+M09  
+Pet Care
+Scope: 
+Guest pet service requests and care tracking.
+• 
+Service request form: pet name, type, services requested, special instructions
+• 
+Task assignment to guest service staff
+• 
+Care log: services rendered, staff name, time
+Owner: 
+Guest Service Staff
+Demo: 
+Demo a request form submission and task assignment only.
+6. Time Tracking — System-Wide Specification
+Time tracking is built into every task and log in the system, not bolted on as a separate module. The goal is to give the manager a complete picture of how long every maintenance activity takes, which staff members are most efficient, and where operational time is being spent.
+6.1  How Time Tracking Works
+There are two methods of time tracking in the system:
+Method
+When It Is Used
+How It Works
+Auto-timestamp on form actions
+All tasks and logs
+System records the exact time a form is opened (start) and submitted (end). Duration is calculated automatically.
+Manual start/stop log
+Pool pump, long maintenance jobs
+Staff tap Start Job and Stop Job buttons. System records both timestamps and shows running duration on screen.
+6.2  Time Data Captured Per Task Category
+Task Category
+Time Fields Captured
+Where It Appears
+Pool pump operation
+ON time · OFF time · Total runtime today · Running daily total
+Pool dashboard, daily compliance report, manager dashboard
+Pool strainer check
+Check start time · Completion time · Duration · Condition found
+Pool log, compliance report
+Pool vacuuming
+Start time · End time · Duration · Last vacuum date · Next due date
+Pool dashboard, task list, manager report
+Pool readings
+Submission timestamp · Time since last reading
+Pool dashboard, parameter trend charts
+Housekeeping room clean
+Task assigned time · Started time · Completed time · Duration
+Room status board, staff report, manager dashboard
+Maintenance job
+Ticket created · Assigned time · Started · Completed · Total resolution time
+Ticket view, escalation tracker, manager report
+Chemical treatment
+Start time · End time · Duration · Chemical + quantity
+Pool compliance log, inventory consumption
+Equipment inspection
+Inspection start · Completion · Duration · Items checked
+Pool compliance report, maintenance log
+6.3  Time Tracking on the Manager Dashboard
+The manager sees the following time-based metrics on their dashboard at all times:
+Pool pump total runtime today vs. 3-hour minimum — displayed as a progress bar
+Average task completion time per staff member this week
+Longest open ticket — how many hours since it was raised
+Pool last reading — how many hours ago the last reading was submitted
+Next scheduled pool task — what it is and when it is due
+Vacuuming status — last done and next due date highlighted
+7. Notification System — Design & Rules
+Every notification in the system follows the same structure: trigger condition → recipient(s) → message content → delivery method → acknowledgement tracking. The same rules apply whether delivered via real WhatsApp or the demo simulation panel.
+Notification
+Trigger
+Recipient
+Urgency
+New task assigned
+Ticket created and assigned to staff
+Assigned staff member
+Normal
+Task not acknowledged — 15 min
+No acknowledgement within 15 minutes of assignment
+Same staff + supervisor
+High
+Task not acknowledged — 30 min
+No acknowledgement within 30 minutes
+Operations Manager
+Critical
+Task overdue
+Task not completed by deadline
+Staff + Manager
+High
+Pool reading due
+30 mins before scheduled reading time
+Pool staff
+Normal
+Pool reading missed
+Reading not submitted within 30 mins of schedule
+Pool staff + Manager
+High
+Pool pump minimum warning
+Pump runtime < 3 hrs and time is 5:00 PM
+Pool staff + Manager
+High
+Pool pump not run
+Pump not run at all and time is 6:00 PM
+Manager
+Critical
+Strainer check overdue
+Mid-day strainer check not submitted by 1:30 PM
+Pool staff
+Normal
+Pool parameter warning
+Reading at warning threshold
+Pool staff
+Normal
+Pool parameter critical
+Reading at critical threshold
+Pool staff + Manager
+Critical
+Vacuuming due today
+7:00 AM on vacuuming due date
+Pool staff
+Normal
+Vacuuming overdue
+Not completed by 12:00 PM on due date
+Manager
+High
+Inventory low stock
+Item hits minimum threshold
+Relevant department head
+Normal
+Guest complaint raised
+High-priority guest request created
+Manager — immediate
+Critical
+Daily briefing
+7:00 AM every morning
+Each staff member — their tasks only
+Normal
+Daily summary report
+8:00 PM every evening
+Operations Manager
+Normal
+8. WhatsApp Notification — Simulation Specification
+Because WhatsApp Business API requires Meta business verification (2–4 weeks, plus approval is not guaranteed for new accounts), the demo version must include a built-in simulation that is indistinguishable from the real experience. This simulation is not a placeholder — it is a complete feature that will also be useful in production for testing and monitoring.
+⚠  
+Do not display any disclaimer or 'simulation mode' label visible to the end user during a demo walkthrough. The simulation panel should look and feel exactly like real WhatsApp messages. The 'simulation' label should only appear in developer/admin settings.
+8.1  The Simulation Panel — What to Build
+Build a dedicated panel inside the app called the Notification Centre. This panel has two views:
+Manager View — Notification Centre
+▸ 
+A feed of all outgoing notifications sent from the system, shown in WhatsApp-style message bubbles
+▸ 
+Each message shows: recipient name, message content, timestamp, and delivery status (Sent / Delivered / Read / Acknowledged)
+▸ 
+Filter by staff member, notification type, date range, or status
+▸ 
+Unacknowledged alerts highlighted in amber — manager can manually follow up
+▸ 
+A Send Now button to manually push any notification immediately
+▸ 
+Notification log is exportable as a PDF or CSV report
+Staff View — Notification Inbox
+▸ 
+A dedicated screen on the staff interface that looks exactly like a WhatsApp chat thread
+▸ 
+Messages arrive here in real time using Socket.IO — no page refresh needed
+▸ 
+Each message has a Confirm / Help Needed reply button below it
+▸ 
+Confirming a message marks the task as Acknowledged in the system — same as a WhatsApp reply would
+▸ 
+Unread messages show a red badge count on the inbox icon
+▸ 
+Morning briefing arrives at 7 AM as a structured list of the day's tasks
+8.2  Message Format — Exactly As It Will Appear
+Every notification must follow this exact format so that when real WhatsApp is connected, the messages are identical. Developers should build the message templates as reusable components.
+Haydays Resort — Task Notification
+Hello Rajan,
+You have been assigned a new task:
+Task:  Pool bottom vacuuming
+Priority:  High
+Due by:  12:00 PM today
+Location:  Main swimming pool
+Notes:  Last vacuum was 2 days ago. Ensure pump is ON during vacuuming.
+Reply  1  to Confirm     Reply  2  if you need help
+8.3  Reply Handling
+In the simulation, reply buttons must update the system exactly as a real WhatsApp reply would. This means the simulation can be switched to real WhatsApp in production with zero code changes to the core logic.
+Staff Reply
+What the System Does
+Manager Sees
+Reply 1 — Confirm
+Task status → Acknowledged. Escalation timer cancelled. Confirmation timestamp logged.
+Green tick on notification. Task shows Acknowledged in dashboard.
+Reply 2 — Help needed
+Task status → Help Requested. Manager receives an alert immediately. Escalation timer paused.
+Amber alert on notification. Task flagged for manager attention.
+No reply after 15 min
+System sends a reminder to the same staff member automatically.
+Notification marked Unacknowledged in amber.
+No reply after 30 min
+System reassigns task to next available staff. Manager notified of reassignment.
+Notification marked Escalated in red.
+8.4  Switching to Real WhatsApp in Production
+When the WhatsApp Business API is approved and integrated, the only change required should be replacing the in-app delivery method with the API call. All message templates, triggers, reply handling, and escalation logic remain identical. Build the simulation with this in mind — it should be a drop-in replacement, not a rewrite.
+What changes when real WhatsApp is connected
+▸ 
+Messages are sent to staff phone numbers via the WhatsApp Business API instead of the in-app inbox
+▸ 
+Staff reply via their actual WhatsApp on their personal phone — the webhook receives the reply and processes it identically to a simulation reply button click
+▸ 
+The Notification Centre continues to display all messages and statuses, now as a monitoring layer
+▸ 
+No changes to trigger rules, message templates, escalation logic, or database structure
+9. Manager Dashboard — Layout & Data Requirements
+The manager dashboard is the first screen the Operations Manager sees on login. It must give a complete picture of the resort's current state without requiring any navigation. Every number on the dashboard must be live — pulling from the database in real time, not cached.
+9.1  Dashboard Sections
+Dashboard Section
+What to Show
+Data Source
+Today's occupancy
+Rooms occupied / total rooms. Arrivals and departures today.
+Booking table
+Pool status panel
+Current pH · Chlorine · Temp. Green/Amber/Red indicator. Pump runtime today vs. 3hr minimum as a progress bar. Next scheduled task.
+Pool readings + pump log
+Open tickets
+Count of open maintenance tickets by priority (Critical / High / Normal). Click to view list.
+Maintenance ticket table
+Task overview
+Total tasks today: Done / In Progress / Not Started / Overdue — as coloured counts.
+Task table
+Staff availability
+Each staff member: Available / On Task / Off Shift. Click to see their current task.
+Staff + task table
+Notification alerts
+Count of unacknowledged notifications in red badge. Click to open Notification Centre.
+Notification log
+Inventory alerts
+Items below threshold listed by name and current stock level.
+Inventory table
+Revenue today
+Total revenue collected today. Outstanding payments.
+Billing table
+9.2  Automated Daily Report
+At 8:00 PM every day, the system generates and delivers the daily summary report to the Operations Manager. In demo, this report is generated on demand via a Generate Report button as well as on the schedule.
+Report Section
+Contents
+Occupancy summary
+Rooms occupied, checked out, checked in, arriving tomorrow
+Task completion
+Completed · Pending · Overdue · Escalated — with staff breakdown
+Pool compliance
+All readings for the day · Pump runtime · Strainer checks · Vacuum status · Any alerts fired
+Maintenance log
+Tickets opened · Tickets resolved · Open tickets with age · Recurring flags
+Inventory movements
+Items consumed today · Low-stock alerts triggered · Purchase requests raised
+Staff productivity
+Tasks completed per staff member · Average completion time
+Guest requests
+All requests raised · Resolution status · Any complaints
+Financial snapshot
+Revenue today · Outstanding payments · Purchase approvals pending
+10. Core Data Model — Tables & Key Fields
+The following tables must exist in the database. Field names are suggestions — developers may rename them to match their conventions, but all fields listed must be present and functional.
+Bookings
+Field
+Type
+Notes
+booking_id
+UUID PK
+guest_name
+String
+room_id
+FK → Rooms
+source
+Enum: Direct / OTA / Corporate
+checkin_date
+Date
+checkout_date
+Date
+status
+Enum: Enquiry / Confirmed / CheckedIn / CheckedOut / Cancelled
+is_vip
+Boolean
+Triggers manager alert on check-in
+created_at
+Timestamp
+Tasks
+Field
+Type
+Notes
+task_id
+UUID PK
+title
+String
+category
+Enum: Housekeeping / Maintenance / Pool / Kitchen / Garden / PetCare
+priority
+Enum: Normal / High / Critical
+status
+Enum: Open / Assigned / InProgress / OnHold / Complete / Closed / Escalated
+assigned_to
+FK → Staff
+created_by
+FK → Staff or System
+location
+String
+Room number or area
+due_by
+Timestamp
+started_at
+Timestamp
+Set when staff marks In Progress
+completed_at
+Timestamp
+Set when staff marks Complete
+duration_minutes
+Integer
+Calculated: completed_at minus started_at
+photo_url
+String
+Optional — required for some task types
+notes
+Text
+is_recurring_flag
+Boolean
+Set by system if same location+category 3× in 30 days
+Pool Logs
+Field
+Type
+Notes
+log_id
+UUID PK
+log_type
+Enum: Reading / PumpOn / PumpOff / StrainerCheck / Vacuum / Chemical / Equipment
+staff_id
+FK → Staff
+log_date
+Date
+start_time
+Timestamp
+Auto-set on form open
+end_time
+Timestamp
+Auto-set on form submit
+duration_minutes
+Integer
+Calculated
+ph_level
+Decimal
+Nullable — only for Reading logs
+chlorine_ppm
+Decimal
+Nullable — only for Reading logs
+temperature_c
+Decimal
+Nullable — only for Reading logs
+turbidity_ntu
+Decimal
+Nullable — only for Reading logs
+water_level_status
+Enum: Normal / Low / VeryLow / Overflow
+Nullable
+strainer_condition
+Enum: Clean / PartiallyBlocked / Blocked
+Nullable — for strainer logs
+pump_on_confirmed
+Boolean
+Must be true before PumpOn log can be submitted
+strainer_checked
+Boolean
+Must be true before PumpOn log can be submitted
+chemical_type
+String
+Nullable — only for Chemical logs
+chemical_quantity
+Decimal
+Nullable — only for Chemical logs
+chemical_unit
+Enum: grams / ml / litres / kg
+Nullable
+notes
+Text
+photo_url
+String
+Required for Vacuum and Equipment logs
+alert_triggered
+Boolean
+True if any reading breached a threshold
+Notifications
+Field
+Type
+Notes
+notification_id
+UUID PK
+recipient_id
+FK → Staff
+task_id
+FK → Tasks
+Nullable — some notifications are not task-specific
+message_type
+Enum: TaskAssigned / Reminder / Escalation / PoolAlert / InventoryAlert / DailyBriefing / DailyReport
+message_body
+Text
+Full message as it was sent
+sent_at
+Timestamp
+delivered_at
+Timestamp
+In simulation: same as sent_at. In real WA: from webhook.
+read_at
+Timestamp
+In simulation: when staff opens notification. In real WA: from webhook.
+acknowledged_at
+Timestamp
+When staff taps Confirm / replies 1
+status
+Enum: Sent / Delivered / Read / Acknowledged / Escalated / Failed
+reply_received
+Enum: Confirm / HelpNeeded / None
+11. Demo Walkthrough Script
+This section defines the exact sequence AntiGravity should prepare for the client demo. Each step should work without any manual setup at demo time — all seed data and scheduled triggers must be pre-configured.
+Step
+What to Show
+Expected Outcome
+1
+Manager logs in — sees the dashboard
+Dashboard shows live occupancy, pool status (Green), open tasks, and a pending inventory alert
+2
+Pool staff logs morning pump start — strainer gate
+Form requires strainer check before pump start can be submitted. Show the block if strainer is not confirmed.
+3
+Pool staff submits morning readings — one value is out of range
+System immediately raises a ticket, fires a notification to pool staff and manager. Pool status turns Red on dashboard.
+4
+Manager sees the alert in Notification Centre
+Notification shows in WhatsApp-style bubble. Manager taps the ticket to review.
+5
+Pool staff receives task notification in their inbox
+Task appears in staff notification inbox with Confirm / Help buttons. Staff taps Confirm.
+6
+System registers acknowledgement
+Task shows Acknowledged on manager's dashboard. Timer cancelled.
+7
+Staff completes the chemical treatment — marks done with photo
+Task moves to Complete. Pool readings updated. Pool status returns to Green.
+8
+Manager approves and closes ticket
+Ticket archived. Full audit trail visible.
+9
+Checkout triggers housekeeping task
+Guest checks out. Room status changes to Checkout. Housekeeping task auto-created and assigned.
+10
+Staff doesn't acknowledge housekeeping task — escalation fires
+After 15 minutes (speed up in demo to 30 seconds), reminder fires. After 30 minutes, manager is notified of escalation.
+11
+Manager generates daily report on demand
+Full report generated instantly — occupancy, tasks, pool compliance, staff productivity, inventory.
+12
+Vacuuming due-date task fires
+System shows next vacuum due. Manager can see last vacuum date and next scheduled date on pool dashboard.
+⚠  
+For step 10, the demo should use accelerated time for escalation — compress 15 minutes into 20 seconds so the client can see the escalation fire live without waiting. Add a demo controls panel in admin settings that allows time compression for this purpose.
+12. Delivery Expectations
+The following items must be delivered as part of the demo version handoff:
+Fully functional web application deployed to a staging URL — accessible on both desktop and mobile
+Seed data pre-loaded — at least 5 bookings, 7 staff accounts (one per role), 10 tasks in various states, 7 days of pool logs
+All 9 modules functional at the level described in Section 5
+Pool module fully implemented with all three rules (pump runtime, strainer gate, vacuuming schedule) enforced
+Notification simulation panel live and working — all 17 notification types firing correctly
+Manager dashboard showing live data with the 8 panels described in Section 9
+Daily report generation working — either on schedule or on-demand
+Demo walkthrough script in Section 11 executable end-to-end without errors
+Admin panel with demo controls (time compression for escalation demo)
+Login credentials document for all role types
+Built for Haydays Resort. Specified for AntiGravity.
+Every rule in this document is a real operational requirement. Build it exactly as written.
