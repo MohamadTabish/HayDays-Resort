@@ -2,9 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
+// Dynamic URLs: use localhost in dev, same origin in production
+const BACKEND_URL = import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin;
+const API_BASE = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api';
+
 // Initialize socket
-const socket = io('http://localhost:5000');
-const api = axios.create({ baseURL: 'http://localhost:5000/api' });
+const socket = io(BACKEND_URL);
+const api = axios.create({ baseURL: API_BASE });
 
 // Add token to requests
 api.interceptors.request.use((config) => {
