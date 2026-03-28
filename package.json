@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Haydays Resort Management System",
   "scripts": {
+    "postinstall": "cd backend && npm install && cd ../frontend && npm install --include=dev",
     "build": "cd frontend && npm run build",
-    "start": "cd backend && node seed.js && node server.js",
-    "install-deps": "cd backend && npm install && cd ../frontend && npm install"
+    "start": "cd backend && node seed.js && node server.js"
   },
   "engines": {
     "node": ">=18.0.0"
