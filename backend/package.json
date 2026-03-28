@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node seed.js && node server.js",
+    "start": "NODE_ENV=production node seed.js && node server.js",
     "dev": "node server.js",
     "seed": "node seed.js"
   },

@@ -12,7 +12,8 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         if (user) {
-            const s = io('http://localhost:5000');
+            const backendUrl = import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin;
+            const s = io(backendUrl);
             setSocket(s);
             s.on('new_notification', (data) => {
                 if (data.recipientId === user.id) setUnreadCount(c => c + 1);

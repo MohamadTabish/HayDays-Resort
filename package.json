@@ -4,11 +4,14 @@
   "description": "Haydays Resort Management System",
   "scripts": {
     "postinstall": "cd backend && npm install && cd ../frontend && npm install --include=dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
-    "start": "cd backend && node seed.js && node server.js"
+    "start": "cd backend && node seed.js && node server.js",
+    "install-deps": "cd backend && npm ci && cd ../frontend && npm ci"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
     "autoprefixer": "^10.4.27",
