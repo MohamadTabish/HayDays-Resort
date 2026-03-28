@@ -5,7 +5,6 @@
   "main": "index.js",
   "scripts": {
     "start": "node seed.js && node server.js",
-    "build": "cd ../frontend && npm install && npm run build",
     "dev": "node server.js",
     "seed": "node seed.js"
   },
