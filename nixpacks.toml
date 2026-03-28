@@ -17,4 +17,4 @@ NODE_VERSION = "22"
 NODE_ENV = "production"
 
 [start]
-cmd = "cd backend && node seed.js && node server.js"
+cmd = "node backend/seed.js && node backend/server.js"
