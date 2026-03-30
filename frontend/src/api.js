@@ -13,7 +13,7 @@ API.interceptors.request.use(config => {
 API.interceptors.response.use(
     res => res,
     err => {
-        if (err.response?.status === 401) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
             localStorage.removeItem('haydays_token');
             localStorage.removeItem('haydays_user');
             window.location.href = '/';

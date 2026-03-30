@@ -48,7 +48,12 @@ const auth = (req, res, next) => {
     const token = (req.headers['authorization'] || '').split(' ')[1];
     if (!token) return res.sendStatus(401);
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+        if (err) return res.sendStatus(401);
+        
+        // Also ensure the user still exists in the database
+        const dbUser = db.prepare('SELECT id FROM Users WHERE id = ?').get(user.id);
+        if (!dbUser) return res.sendStatus(401);
+        
         req.user = user;
         next();
     });
