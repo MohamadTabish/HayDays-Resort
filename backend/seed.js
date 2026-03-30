@@ -29,7 +29,19 @@ db.exec(`
 const hash = (pw) => bcrypt.hashSync(pw, 10);
 const today = new Date();
 
+// Check if --force flag is passed to force re-seed
+const forceReseed = process.argv.includes('--force');
+
 function seed() {
+    // Check if database already has data — skip seeding to preserve user sessions
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM Users').get().count;
+    if (userCount > 0 && !forceReseed) {
+        console.log('✅ Database already seeded (' + userCount + ' users found). Skipping seed.');
+        console.log('   To force re-seed, run: node seed.js --force');
+        db.close();
+        process.exit(0);
+    }
+
     console.log('🌱 Clearing old data...');
     db.exec(`
         DELETE FROM WA_Messages;
@@ -188,3 +200,4 @@ function seed() {
 }
 
 seed();
+db.close();
